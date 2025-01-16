@@ -1,100 +1,53 @@
-"""import sqlite3
-def create_data_base(login, password, database='Login_Password.db'):
-    conn = sqlite3.connect(database)
-    cr = conn.cursor()
-    cr.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Name TEXT
-       )
-   ''')
-    cr.execute('''
-        CREATE TABLE IF NOT EXISTS passwords (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Password TEXT
-            )
-        ''')
-    cr.execute('INSERT INTO Users (Name) VALUES (?)', (login,))
-    cr.execute('INSERT INTO passwords (Password) VALUES (?)', (password,))
-    conn.commit()
-    conn.close()
-create_data_base('Login.db')"""
-
+import pygame
 import sys
-import random
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel
-from PyQt6.QtGui import QImage, QColor
-from PyQt6.QtCore import Qt
 
-class BinaryImageApp(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-        self.binary_records = []  # Двойной список для хранения бинарных записей
+# Константы
+WIDTH, HEIGHT = 400, 300
+BUTTON_WIDTH, BUTTON_HEIGHT = 100, 50
 
-    def initUI(self):
-        self.setWindowTitle("Binary to Image")
+# Цвета кнопок
+BUTTON_COLOR_1 = (255, 0, 0)  # Красный
+BUTTON_COLOR_2 = (0, 255, 0)  # Зеленый
+BUTTON_COLOR_3 = (0, 0, 255)  # Синий
+BUTTON_HOVER_COLOR = (150, 150, 150)
 
-        layout = QVBoxLayout()
+# Функция для рисования кнопки
+def draw_button(screen, x, y, width, height, color, text=''):
+    mouse_pos = pygame.mouse.get_pos()
+    button_rect = pygame.Rect(x, y, width, height)
 
-        self.input_field = QLineEdit(self)
-        self.input_field.setPlaceholderText("Введите бинарное число (12 символов)")
-        layout.addWidget(self.input_field)
+    # Изменение цвета кнопки при наведении мыши
+    if button_rect.collidepoint(mouse_pos):
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR, button_rect)
+    else:
+        pygame.draw.rect(screen, color, button_rect)
 
-        self.submit_button = QPushButton("Создать изображение", self)
-        self.submit_button.clicked.connect(self.create_image)
-        layout.addWidget(self.submit_button)
+    # Отображение текста на кнопке
+    if text:
+        font = pygame.font.Font(None, 36)
+        text_surface = font.render(text, True, (0, 0, 0))
+        text_rect = text_surface.get_rect(center=button_rect.center)
+        screen.blit(text_surface, text_rect)
 
-        self.decode_button = QPushButton("Расшифровать записи", self)
-        self.decode_button.clicked.connect(self.decode_records)
-        layout.addWidget(self.decode_button)
+if __name__ == '__main__':
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption('Sniper')
 
-        self.result_label = QLabel("", self)
-        layout.addWidget(self.result_label)
+    # Основной цикл
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
 
-        self.setLayout(layout)
+        # Очистка экрана
+        screen.fill((255, 255, 255))
 
-    def create_image(self):
-        binary_input = self.input_field.text()
+        # Рисование кнопок с разными цветами и расположением
+        draw_button(screen, 50, 50, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COLOR_1, 'Ruke')
+        draw_button(screen, 50, 120, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COLOR_2, 'Settings')
+        draw_button(screen, 50, 190, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_COLOR_3, 'Play')
 
-        if len(binary_input) != 12 or not all(c in '01' for c in binary_input):
-            self.result_label.setText("Ошибка: Введите корректное бинарное число длиной 12 символов.")
-            return
-
-        # Добавляем бинарное число в двойной список
-        self.binary_records.append(binary_input)
-
-        # Разделение на 3 части по 4 символа
-        parts = [binary_input[i:i + 4] for i in range(0, 12, 4)]
-
-        # Создаем изображение 100x100 пикселей
-        image = QImage(100, 100, QImage.Format.Format_RGB32)
-        image.fill(QColor(255, 255, 255))  # Заполняем белым цветом
-
-        for part in parts:
-            x = random.randint(0, 99)
-            y = random.randint(0, 99)
-            # Преобразуем бинарную строку в RGB цвет
-            r = int(part[0]) * 255
-            g = int(part[1]) * 255
-            b = int(part[2]) * 255
-            image.setPixel(x, y, QColor(r, g, b).rgb())
-
-        # Сохраняем изображение
-        image.save("output_image.png")
-        self.result_label.setText("Изображение создано: output_image.png")
-
-    def decode_records(self):
-        if not self.binary_records:
-            self.result_label.setText("Нет записей для расшифровки.")
-            return
-
-        decoded_output = "\n".join(self.binary_records)
-        self.result_label.setText(f"Расшифрованные записи:\n{decoded_output}")
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    ex = BinaryImageApp()
-    ex.resize(300, 200)
-    ex.show()
-    sys.exit(app.exec())
+        # Обновление экрана
+        pygame.display.flip()
