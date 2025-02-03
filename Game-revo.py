@@ -6,14 +6,13 @@ import time
 import sqlite3
 import hashlib
 
-
 # Инициализация Pygame
 pygame.init()
 
 # Установка размеров окна
 screen_size = (800, 600)
 screen = pygame.display.set_mode(screen_size)
-pygame.display.set_caption("Случайные объекты вокруг кубика")
+pygame.display.set_caption("Game Revo")
 count = 0
 # Определение цветов
 WHITE = (255, 255, 255)
@@ -39,6 +38,7 @@ class Ball:
     def cube_in(self, center):
         distance = math.sqrt((center[0] - self.x) ** 2 + (center[1] - self.y) ** 2)
         return distance < self.radius
+
     def is_overlapping(self, other_ball):
         """Проверяет наложение с другим шариком."""
         distance = math.sqrt((self.x - other_ball.x) ** 2 + (self.y - other_ball.y) ** 2)
@@ -59,18 +59,105 @@ class Ball:
         return balls
 
 
+# Функция для создания базы данных
+def create_database(db_name='game_records.db'):
+    """Создает базу данных и необходимые таблицы, если они не существуют."""
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    # Создание таблицы для пользователей (id, login, password)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            login TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        )
+    ''')
+
+    # Создание таблицы для рекордов игры 2 (id, record)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS records_game2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            record INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Создание таблицы для рекордов игры 1 (id, record1, record2, record3)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS records_game1 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            record1 INTEGER DEFAULT -1,
+            record2 INTEGER DEFAULT -1,
+            record3 INTEGER DEFAULT -1
+        )
+    ''')
+
+    # Сохраняем изменения и закрываем соединение
+    conn.commit()
+    conn.close()
+
+
+# Функция для хеширования пароля
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+# Функция для регистрации пользователя
+def register_user(login, password):
+    """Регистрирует нового пользователя и заполняет базовые значения рекордов."""
+    conn = sqlite3.connect('game_records.db')
+    cursor = conn.cursor()
+
+    hashed_password = hash_password(password)
+
+    try:
+        # Вставка нового пользователя
+        cursor.execute("INSERT INTO users (login, password) VALUES (?, ?)", (login, hashed_password))
+        user_id = cursor.lastrowid  # Получаем ID нового пользователя
+
+        # Вставка базовых значений в таблицы рекордов
+        cursor.execute("INSERT INTO records_game2 (record) VALUES (?)", (-1,))
+        cursor.execute("INSERT INTO records_game1 (record1, record2, record3) VALUES (?, ?, ?)", (-1, -1, -1))
+
+        conn.commit()
+        return True  # Успешная регистрация
+    except sqlite3.IntegrityError:
+        return False  # Имя пользователя уже занято
+
+    conn.close()
+
+
+# Функция для проверки учетных данных пользователя
+def check_user(login, password):
+    """Проверяет учетные данные пользователя."""
+    conn = sqlite3.connect('game_records.db')
+    cursor = conn.cursor()
+
+    hashed_password = hash_password(password)
+
+    cursor.execute("SELECT * FROM users WHERE login=? AND password=?", (login, hashed_password))
+    user = cursor.fetchone()
+
+    conn.close()
+
+    return user is not None
+
+
 def registration_screen():
-    '''  create_database() ''' # Создаем базу данных, если она не существует
+    create_database()  # Создаем базу данных, если она не существует
 
     input_box_name = pygame.Rect(50, 200, 500, 50)
     input_box_password = pygame.Rect(50, 300, 500, 50)
+
     color_inactive = pygame.Color('lightskyblue3')
     color_active = pygame.Color('dodgerblue2')
 
     color_name = color_inactive
     color_password = color_inactive
+
     active_name = False
     active_password = False
+
     name_text = ''
     password_text = ''
 
@@ -86,9 +173,10 @@ def registration_screen():
 
     while True:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT:  # Обработка закрытия окна
                 pygame.quit()
                 sys.exit()
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if input_box_name.collidepoint(event.pos):
                     active_name = True
@@ -116,8 +204,31 @@ def registration_screen():
                     else:
                         password_text += event.unicode
 
+            # Обработка нажатия кнопок "Sign Up" и "Sign In"
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = event.pos
+
+                if sign_up_rect.collidepoint(mouse_pos):
+                    if name_text.strip() and password_text.strip():
+                        if register_user(name_text.strip(), password_text):
+                            name_text = ''
+                            password_text = ''
+                            error_message = ''
+                        else:
+                            error_message = "Имя пользователя уже занято."
+                    else:
+                        error_message = "Недопустимый формат: имя и пароль не могут быть пустыми."
+
+                elif sign_in_rect.collidepoint(mouse_pos):
+                    if check_user(name_text.strip(), password_text):
+                        print(f"Добро пожаловать обратно {name_text}!")
+                        return name_text.strip() or "Игрок"
+                    else:
+                        error_message = "Неверные учетные данные. Попробуйте снова."
+
         screen.fill((0, 0, 0))
         font = pygame.font.SysFont('arial', 24)
+
         screen.blit(font.render('Введите ваше имя', True, (255, 255, 255)), (50, 160))
         screen.blit(font.render('Введите пароль', True, (255, 255, 255)), (50, 260))
 
@@ -152,32 +263,47 @@ def registration_screen():
             error_surface = font.render(error_message, True, (255, 0, 0))
             screen.blit(error_surface, (50, 430))
 
-            # Проверка нажатия на кнопки
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = event.pos
-                if sign_up_rect.collidepoint(mouse_pos):
-                    if register_user(name_text.strip(), password_text):
-                        name_text = ''
-                        password_text = ''
-                        error_message = ''
-                    else:
-                        error_message = "Имя пользователя уже занято."
-                elif sign_in_rect.collidepoint(mouse_pos):
-                    if check_user(name_text.strip(), password_text):
-                        print(f"Добро пожаловать обратно {name_text}!")
-                        return name_text.strip() or "Игрок"
-                    else:
-                        error_message = "Неверные учетные данные. Попробуйте снова."
-
         pygame.display.flip()
 
 
-# Инициализация Pygame и вызов функции регистрации можно добавить ниже.
+def show_result_screen_game1(elapsed_time, penalty, difficulty):
+    global player_name
+
+    """Получает текущий рекорд и обновляет его, если новый результат лучше."""
+    conn = sqlite3.connect('game_records.db')
+    cursor = conn.cursor()
+
+    # Выполняем запрос для получения id
+    cursor.execute("SELECT id FROM users WHERE login=?", (player_name,))
+    id = cursor.fetchone()[0]  # Получаем первую запись
 
 
-def show_result_screen_game1(elapsed_time, penalty):
-    """Отображает экран с результатами."""
+
+    # Определяем, какое поле использовать в зависимости от сложности
+    if difficulty == 15:
+        cursor.execute("SELECT record1 FROM records_game1 WHERE id=?", (id,))
+        record = cursor.fetchone()
+        record = record[0]
+        record_field = "record1"
+    elif difficulty == 25:
+        cursor.execute("SELECT record2 FROM records_game1 WHERE id=?", (id,))
+        record = cursor.fetchone()
+        record = record[0]
+        record_field = "record2"
+    elif difficulty == 40:
+        cursor.execute("SELECT record3 FROM records_game1 WHERE id=?", (id,))
+        record = cursor.fetchone()
+        record_value = record[0]
+        record_field = "record3"
+
+
+    # Если рекорд отсутствует (-1) или новый результат лучше, обновляем его
+    if record == -1 or float(elapsed_time) < record:
+        cursor.execute(f"UPDATE records_game1 SET {record_field}=? WHERE id=?", (float(elapsed_time), id))
+        conn.commit()
+
+
+    conn.close()
     running = True
     while running:
         for event in pygame.event.get():
@@ -189,15 +315,22 @@ def show_result_screen_game1(elapsed_time, penalty):
 
         font = pygame.font.SysFont('arial', 36)
 
-        # Форматирование строки времени и штрафа
-        time_string = f"Общее время: {elapsed_time / 10:.1f} сек"
+        # Получаем текущий рекорд и проверяем, нужно ли его обновить
+
+
+        # Форматирование строк для отображения
+        time_string = f"Общее время: {elapsed_time:.1f} сек"
         penalty_string = f"Штрафные секунды: {penalty * 3} сек"
-        record = f"Рекорд: {penalty} сек"
+
+        if record == -1 or float(elapsed_time) < record:
+            record_message = f"Рекорд обновлен! Новый рекорд: {elapsed_time:.1f} сек"
+        else:
+            record_message = f"Текущий рекорд: {record:.1f} сек"
 
         # Рендеринг текста
         time_surface = font.render(time_string, True, (255, 255, 255))
         penalty_surface = font.render(penalty_string, True, (255, 255, 255))
-        record_surface = font.render(record, True, (255, 255, 255))
+        record_surface = font.render(record_message, True, (255, 255, 255))
 
         # Отображение текста на экране
         screen.blit(time_surface, (50, 200))
@@ -214,7 +347,7 @@ def game1(num_balls):
     # Установка размеров окна
     screen_size = (800, 600)
     screen = pygame.display.set_mode(screen_size)
-    pygame.display.set_caption("Случайные объекты вокруг кубика")
+    pygame.display.set_caption("Game_Revo_1")
 
     # Определение цветов
     WHITE = (255, 255, 255)
@@ -234,7 +367,7 @@ def game1(num_balls):
     speed = 5  # Скорость движения области
 
     # Генерация случайных объектов
-      # Количество шариков
+    # Количество шариков
     ball_radius = 20
 
     balls = Ball.generate_non_overlapping_balls(num_balls, ball_radius, screen_size[0], screen_size[1])
@@ -269,9 +402,7 @@ def game1(num_balls):
                     choose_difficulty()
 
         if not balls:
-            end_time = time.time()  # Время окончания игры
-            total_time = end_time - start_time + penalty * 3  # Общее время с учетом штрафа
-            show_result_screen_game1(elapsed_time + penalty * 3 * 10, penalty)
+            show_result_screen_game1(elapsed_time, penalty, num_balls)
             break
         # Получаем состояние клавиш
         keys = pygame.key.get_pressed()
@@ -302,7 +433,7 @@ def game1(num_balls):
         for ball in balls:
             ball.draw(screen, offset_x, offset_y)
 
-        elapsed_time = pygame.time.get_ticks() // 100  # Переводим в секунды
+        elapsed_time = float(f"{current_time + penalty * 3:.1f}")   # Переводим в секунды
         font = pygame.font.SysFont('arial', 24)
         # Форматирование строки времени
         time_string = f"{current_time + penalty * 3:.1f} с"
@@ -324,14 +455,35 @@ def game1(num_balls):
         pygame.display.flip()
         clock.tick(60)
 
-def show_loss_screen_timeout(current_score, record=0):
+
+def show_loss_screen_timeout(current_score):
     """Отображает экран с сообщением о проигрыше из-за истечения времени."""
+    conn = sqlite3.connect('game_records.db')
+    cursor = conn.cursor()
+    # Выполняем запрос для получения id
+    cursor.execute("SELECT id FROM users WHERE login=?", (player_name,))
+    id = cursor.fetchone()[0]  # Получаем первую запись
+
+    # Запрос всех рекордов из таблицы records_game2
+    cursor.execute("SELECT * FROM records_game2")
+    record = cursor.fetchall()[0]  # Получаем все записи
+    record = record[1]
+
+    if record < current_score:
+        cursor.execute(f"UPDATE records_game2 SET record=? WHERE id=?", (current_score, id))
+        conn.commit()
+
+
+    conn.close()
+
+
+
     pygame.init()
 
     # Установка размеров окна
     screen_size = (800, 600)
     screen = pygame.display.set_mode(screen_size)
-    pygame.display.set_caption("Случайные объекты вокруг кубика")
+    pygame.display.set_caption("Game_Revo_time")
 
     button_width = 300
     button_height = 60
@@ -361,8 +513,10 @@ def show_loss_screen_timeout(current_score, record=0):
         # Форматирование строки с сообщением о проигрыше
         loss_message = "Вы проиграли! Время вышло."
         score_string = f"Текущий счет: {current_score} мишеней"
-        record_string = f"Рекорд: {record} мишеней"
-
+        if record > current_score:
+            record_string = f"Рекорд: {record} мишеней"
+        else:
+            record_string = f"Рекорд: {current_score} мишеней"
         # Рендеринг текста
         loss_surface = font.render(loss_message, True, (255, 0, 0))  # Красный текст
         score_surface = font.render(score_string, True, (255, 255, 255))
@@ -390,14 +544,31 @@ def show_loss_screen_timeout(current_score, record=0):
         pygame.display.flip()
 
 
-def show_loss_screen_miss(current_score, record=0):
+def show_loss_screen_miss(current_score):
     """Отображает экран с сообщением о проигрыше из-за промаха."""
+    conn = sqlite3.connect('game_records.db')
+    cursor = conn.cursor()
+    # Выполняем запрос для получения id
+    cursor.execute("SELECT id FROM users WHERE login=?", (player_name,))
+    id = cursor.fetchone()[0]  # Получаем первую запись
+
+    # Запрос всех рекордов из таблицы records_game2
+    cursor.execute("SELECT * FROM records_game2")
+    record = cursor.fetchall()[0]  # Получаем все записи
+    record = record[1]
+
+    if record < current_score:
+        cursor.execute(f"UPDATE records_game2 SET record=? WHERE id=?", (current_score, id))
+        conn.commit()
+
+    conn.close()
+
     pygame.init()
 
     # Установка размеров окна
     screen_size = (800, 600)
     screen = pygame.display.set_mode(screen_size)
-    pygame.display.set_caption("Случайные объекты вокруг кубика")
+    pygame.display.set_caption("Game_Revo_miss")
     # Определение областей для кнопок
 
     button_width = 300
@@ -429,7 +600,10 @@ def show_loss_screen_miss(current_score, record=0):
         # Форматирование строки с сообщением о проигрыше
         loss_message = "Вы проиграли! Вы промахнулись."
         score_string = f"Текущий счет: {current_score} мишеней"
-        record_string = f"Рекорд: {record} мишеней"
+        if record > current_score:
+            record_string = f"Рекорд: {record} мишеней"
+        else:
+            record_string = f"Рекорд: {current_score} мишеней"
 
         # Рендеринг текста
         loss_surface = font.render(loss_message, True, (255, 0, 0))  # Красный текст
@@ -457,7 +631,6 @@ def show_loss_screen_miss(current_score, record=0):
         pygame.display.flip()
 
 
-
 def game2():
     global count
     # Инициализация Pygame
@@ -466,9 +639,7 @@ def game2():
     # Установка размеров окна
     screen_size = (800, 600)
     screen = pygame.display.set_mode(screen_size)
-    pygame.display.set_caption("Случайные объекты вокруг кубика")
-
-
+    pygame.display.set_caption("Game_Revo_2")
 
     # Параметры кубика
     cube_size = 50
@@ -483,12 +654,14 @@ def game2():
     speed = 5  # Скорость движения области
     ball_radius = 30
 
-
     # Загрузка спрайтов
-    target_image = pygame.image.load('pngwing.com.png').convert_alpha()  # Замените 'target.png' на путь к вашему изображению мишени
-    gun_image = pygame.image.load('143013e2865f33cc72738bd54ce5ede1.png').convert_alpha()  # Замените 'gun.png' на путь к вашему изображению пистолета
+    target_image = pygame.image.load(
+        'pngwing.com.png').convert_alpha()  # Замените 'target.png' на путь к вашему изображению мишени
+    gun_image = pygame.image.load(
+        '143013e2865f33cc72738bd54ce5ede1.png').convert_alpha()  # Замените 'gun.png' на путь к вашему изображению пистолета
     clock = pygame.time.Clock()
-    ball = Ball(random.randint(ball_radius, screen_size[0] - ball_radius), random.randint(ball_radius, screen_size[1] - ball_radius), ball_radius,'Red')
+    ball = Ball(random.randint(ball_radius, screen_size[0] - ball_radius),
+                random.randint(ball_radius, screen_size[1] - ball_radius), ball_radius, 'Red')
     start_time = time.time()
     # Главный игровой цикл
     running = True
@@ -500,10 +673,13 @@ def game2():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     if ball.cube_in(center):
-                            print('Попал')
-                            count += 1
-                            start_time = time.time()
-                            ball = Ball(random.randint(center[0] + ball_radius - screen_size[0] // 2, center[0] + screen_size[0] // 2 - ball_radius), random.randint(center[1] + ball_radius - screen_size[1] + 25 + cube_size // 2, center[1] + 25 - ball_radius - cube_size // 2), ball_radius,'Red')
+                        print('Попал')
+                        count += 1
+                        start_time = time.time()
+                        ball = Ball(random.randint(center[0] + ball_radius - screen_size[0] // 2,
+                                                   center[0] + screen_size[0] // 2 - ball_radius),
+                                    random.randint(center[1] + ball_radius - screen_size[1] + 25 + cube_size // 2,
+                                                   center[1] + 25 - ball_radius - cube_size // 2), ball_radius, 'Red')
 
                     else:
                         print('Мимо')
@@ -511,7 +687,6 @@ def game2():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     main_menu()
-
 
         # Получаем состояние клавиш
         keys = pygame.key.get_pressed()
@@ -526,14 +701,12 @@ def game2():
         if keys[pygame.K_d]:  # D - вправоффв
             offset_x -= speed
 
-
-
         center = cube_сentrer[0] - offset_x, cube_сentrer[1] - offset_y
         # Ограничение смещения в пределах окна
 
-        screen.fill((0,0,0))
+        screen.fill((0, 0, 0))
         # Получение времени работы программы в миллисекундах
-        current_time = f'{3 + start_time - time.time():.1f}' # Переводим в секунды
+        current_time = f'{3 + start_time - time.time():.1f}'  # Переводим в секунды
         if float(current_time) <= 0:
             show_loss_screen_timeout(count)
 
@@ -556,7 +729,6 @@ def game2():
 
         screen.blit(gun_image, (cube_сentrer[0] - gun_image.get_width() // 2,
                                 cube_сentrer[1] - gun_image.get_height() // 2))
-
 
         # Обновление дисплея
         pygame.display.flip()
@@ -695,7 +867,7 @@ def choose_difficulty():
                     if easy_rect.collidepoint(mouse_pos):
                         game1(15)
                     elif medium_rect.collidepoint(mouse_pos):
-                        game1(25)# Функция для запуска игры на среднем уровне
+                        game1(25)  # Функция для запуска игры на среднем уровне
                     elif hard_rect.collidepoint(mouse_pos):
                         game1(40)  # Функция для запуска игры на сложном уровне
             if event.type == pygame.KEYDOWN:
@@ -752,9 +924,9 @@ def show_rules():
                 if event.key == pygame.K_ESCAPE:
                     main_menu()
 
+    # Запуск главного меню игры
 
-     # Запуск главного меню игры
+
 player_name = registration_screen()
+print(player_name)
 main_menu()
-
-
