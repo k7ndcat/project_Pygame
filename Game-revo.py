@@ -655,13 +655,12 @@ def game2():
     ball_radius = 30
 
     # Загрузка спрайтов
-    target_image = pygame.image.load(
-        'pngwing.com.png').convert_alpha()  # Замените 'target.png' на путь к вашему изображению мишени
+    target_image = pygame.image.load('target2.png').convert_alpha()  # Замените 'target.png' на путь к вашему изображению мишени
     gun_image = pygame.image.load(
         '143013e2865f33cc72738bd54ce5ede1.png').convert_alpha()  # Замените 'gun.png' на путь к вашему изображению пистолета
     clock = pygame.time.Clock()
     ball = Ball(random.randint(ball_radius, screen_size[0] - ball_radius),
-                random.randint(ball_radius, screen_size[1] - ball_radius), ball_radius, 'Red')
+                random.randint(ball_radius, screen_size[1] - ball_radius), ball_radius, 'WhITE')
     start_time = time.time()
     # Главный игровой цикл
     running = True
