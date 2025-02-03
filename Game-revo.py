@@ -408,13 +408,13 @@ def game1(num_balls):
         keys = pygame.key.get_pressed()
 
         # Движение области вокруг кубика
-        if keys[pygame.K_w]:  # W - вверх
+        if keys[pygame.K_w] or keys[pygame.K_UP]:  # W или стрелка вверх
             offset_y += speed
-        if keys[pygame.K_s]:  # S - вниз
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:  # S или стрелка вниз
             offset_y -= speed
-        if keys[pygame.K_a]:  # A - влево
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:  # A или стрелка влево
             offset_x += speed
-        if keys[pygame.K_d]:  # D - вправоффв
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:  # D или стрелка вправо
             offset_x -= speed
 
         center = cube_сentrer[0] - offset_x, cube_сentrer[1] - offset_y
@@ -691,13 +691,13 @@ def game2():
         keys = pygame.key.get_pressed()
 
         # Движение области вокруг кубика
-        if keys[pygame.K_w]:  # W - вверх
+        if keys[pygame.K_w] or keys[pygame.K_UP]:  # W или стрелка вверх
             offset_y += speed
-        if keys[pygame.K_s]:  # S - вниз
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:  # S или стрелка вниз
             offset_y -= speed
-        if keys[pygame.K_a]:  # A - влево
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:  # A или стрелка влево
             offset_x += speed
-        if keys[pygame.K_d]:  # D - вправоффв
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:  # D или стрелка вправо
             offset_x -= speed
 
         center = cube_сentrer[0] - offset_x, cube_сentrer[1] - offset_y
@@ -929,3 +929,4 @@ def show_rules():
 player_name = registration_screen()
 print(player_name)
 main_menu()
+2
