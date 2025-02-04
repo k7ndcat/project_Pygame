@@ -374,9 +374,9 @@ def game1(num_balls):
     penalty = 0  # штрафные секунды (3)
     # Загрузка спрайтов
     target_image = pygame.image.load(
-        'pngwing.com.png').convert_alpha()  # Замените 'target.png' на путь к вашему изображению мишени
+        'pngwing.com.png').convert_alpha()
     gun_image = pygame.image.load(
-        '143013e2865f33cc72738bd54ce5ede1.png').convert_alpha()  # Замените 'gun.png' на путь к вашему изображению пистолета
+        'pisto.png').convert_alpha()
     clock = pygame.time.Clock()
     start_time = time.time()
 
@@ -929,4 +929,3 @@ def show_rules():
 player_name = registration_screen()
 print(player_name)
 main_menu()
-2
