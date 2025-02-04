@@ -293,7 +293,7 @@ def show_result_screen_game1(elapsed_time, penalty, difficulty):
     elif difficulty == 40:
         cursor.execute("SELECT record3 FROM records_game1 WHERE id=?", (id,))
         record = cursor.fetchone()
-        record_value = record[0]
+        record = record[0]
         record_field = "record3"
 
 
